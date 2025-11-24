@@ -59,7 +59,7 @@ namespace Amethral.Api.Controllers
 
         [HttpPost("link-existing-account")]
         [Authorize] 
-        public async Task<IActionResult> LinkExistingAccount([FromBody] WebTokenRequest request)
+        public async Task<IActionResult> LinkExistingAccount([FromBody] TokenStatusRequest request)
         {
             // On récupère l'ID du User depuis son JWT Web (automatique grâce à [Authorize])
             var userIdClaim = User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub);
@@ -67,8 +67,8 @@ namespace Amethral.Api.Controllers
 
             var userId = Guid.Parse(userIdClaim.Value);
 
-            // On appelle une méthode simple (à créer dans AuthService) qui fait juste l'UPDATE
-            var success = await _authService.ForceLinkUserToToken(request.DeviceId, userId); // deviceId ici = le token string, nommage un peu confus, utilise le champ Token
+            // On lie le token Unity (WebToken) à l'utilisateur connecté
+            var success = await _authService.ForceLinkUserToToken(request.WebToken, userId);
             
             // Correction: utilise plutôt request.WebToken si tu as adapté le DTO, 
             // ou réutilise WebTokenRequest en considérant que DeviceId contient le token, 

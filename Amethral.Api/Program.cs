@@ -62,7 +62,7 @@ builder.Services.AddCors(options =>
 
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secretKey = jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey is not configured.");
-var key = Encoding.ASCII.GetBytes(secretKey);
+var key = Encoding.UTF8.GetBytes(secretKey);
 
 builder.Services.AddAuthentication(options =>
 {
@@ -71,6 +71,7 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
+    options.MapInboundClaims = false; // Disable automatic claim mapping
     options.RequireHttpsMetadata = false; //TODO: Mettre true en prod
     options.SaveToken = true;
     options.TokenValidationParameters = new TokenValidationParameters
