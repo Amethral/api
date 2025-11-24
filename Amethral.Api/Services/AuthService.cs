@@ -62,7 +62,7 @@ namespace Amethral.Api.Services
             return new WebTokenResponse
             {
                 Token = token,
-                AuthUrl = $"https://monsiteweb.com/login?token={token}", // URL Frontend
+                AuthUrl = $"{_config["FrontendUrl"]}/login?token={token}", // URL Frontend
                 ExpiresAt = entity.ExpiresAt
             };
         }

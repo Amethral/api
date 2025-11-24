@@ -55,7 +55,7 @@ builder.Services.AddScoped<AuthService>();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowWeb",
-        policy => policy.WithOrigins("http://localhost:8080") // Ton URL Vue.js
+        policy => policy.WithOrigins(builder.Configuration["FrontendUrl"] ?? "http://localhost:4200") // Ton URL Vue.js
                         .AllowAnyMethod()
                         .AllowAnyHeader());
 });
