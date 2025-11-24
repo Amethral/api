@@ -39,10 +39,15 @@ namespace Amethral.Api.Services
         }
 
         // 2. Register Email + Validation du Ticket
+        // MmorpgAuth.Api/Services/AuthService.cs
+
         public async Task<bool> RegisterWithEmailAsync(RegisterRequest request)
         {
-            // Vérification doublon email... (simplifié ici)
-            
+            // 1. Check Unicité (comme vu avant)
+            if (await _context.Users.AnyAsync(u => u.Email == request.Email))
+                return false;
+
+            // 2. Création de l'utilisateur (Indépendant du token)
             var user = new User
             {
                 Username = request.Username,
@@ -53,18 +58,30 @@ namespace Amethral.Api.Services
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
 
-            // LIEN CRITIQUE : On attache le User au Token
-            return await LinkUserToToken(request.WebToken, user.Id);
+            // 3. Liaison au Token (OPTIONNEL)
+            // Si le champ n'est pas vide, on tente le handshake Unity
+            if (!string.IsNullOrWhiteSpace(request.WebToken))
+            {
+                await LinkUserToToken(request.WebToken, user.Id);
+            }
+
+            return true;
         }
 
-        // 3. Login Email + Validation du Ticket
         public async Task<bool> LoginWithEmailAsync(LoginRequest request)
         {
+            // 1. Vérification Credentials
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
             if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
                 return false;
 
-            return await LinkUserToToken(request.WebToken, user.Id);
+            // 2. Liaison au Token (OPTIONNEL)
+            if (!string.IsNullOrWhiteSpace(request.WebToken))
+            {
+                await LinkUserToToken(request.WebToken, user.Id);
+            }
+
+            return true;
         }
 
         // Méthode helper privée pour valider le ticket
@@ -85,7 +102,6 @@ namespace Amethral.Api.Services
         public async Task<AuthSuccessResponse?> FinalizeAuthAsync(string webToken, string deviceId)
         {
             var tokenEntity = await _context.WebAuthTokens
-                .Include(t => t.UserId) // Pseudo include, on veut juste l'ID
                 .FirstOrDefaultAsync(t => t.Token == webToken && t.DeviceId == deviceId);
 
             // Pas encore prêt ou expiré

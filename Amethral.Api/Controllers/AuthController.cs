@@ -26,16 +26,19 @@ namespace Amethral.Api.Controllers
         public async Task<IActionResult> Register([FromBody] RegisterRequest request)
         {
             var success = await _authService.RegisterWithEmailAsync(request);
-            if (!success) return BadRequest("Invalid token or email already exists.");
-            return Ok(new { message = "User linked to token." });
+            if (!success) return BadRequest("Email already exists.");
+    
+            // On renvoie un succès générique
+            return Ok(new { message = "Registration successful." });
         }
 
         [HttpPost("login-email")]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
             var success = await _authService.LoginWithEmailAsync(request);
-            if (!success) return Unauthorized("Invalid credentials or token.");
-            return Ok(new { message = "User linked to token." });
+            if (!success) return Unauthorized("Invalid credentials.");
+
+            return Ok(new { message = "Login successful." });
         }
 
         [HttpPost("finalize")]

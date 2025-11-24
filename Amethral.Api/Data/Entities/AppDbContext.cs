@@ -22,6 +22,14 @@ namespace Amethral.Api.Data
             // Index pour le polling rapide
             modelBuilder.Entity<WebAuthToken>()
                 .HasIndex(t => t.Token);
+
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.Email)
+                .IsUnique();
+
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.Username)
+                .IsUnique();
         }
     }
 }
