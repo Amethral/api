@@ -2,16 +2,45 @@ using Microsoft.EntityFrameworkCore;
 using Amethral.Api.Data;
 using Amethral.Api.Data.Entities;
 using Amethral.Common.DTOs;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 namespace Amethral.Api.Services
 {
     public class AuthService
     {
         private readonly AppDbContext _context;
+        private readonly IConfiguration _config;
 
-        public AuthService(AppDbContext context)
+        public AuthService(AppDbContext context, IConfiguration config)
         {
             _context = context;
+            _config = config;
+        }
+
+        private string GenerateWebJwt(User user)
+        {
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["JwtSettings:SecretKey"]!));
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+            var claims = new[]
+            {
+                new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+                new Claim(JwtRegisteredClaimNames.Email, user.Email),
+                new Claim("username", user.Username)
+            };
+
+            var token = new JwtSecurityToken(
+                issuer: _config["JwtSettings:Issuer"],
+                audience: _config["JwtSettings:Audience"],
+                claims: claims,
+                expires: DateTime.UtcNow.AddDays(7), // Reste connecté 7 jours
+                signingCredentials: creds
+            );
+
+            return new JwtSecurityTokenHandler().WriteToken(token);
         }
 
         // 1. Génération du ticket pour Unity
@@ -68,20 +97,20 @@ namespace Amethral.Api.Services
             return true;
         }
 
-        public async Task<bool> LoginWithEmailAsync(LoginRequest request)
+        public async Task<string?> LoginWithEmailAsync(LoginRequest request)
         {
-            // 1. Vérification Credentials
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
             if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
-                return false;
+                return null;
 
-            // 2. Liaison au Token (OPTIONNEL)
+            // Si un WebToken Unity est présent, on le lie
             if (!string.IsNullOrWhiteSpace(request.WebToken))
             {
                 await LinkUserToToken(request.WebToken, user.Id);
             }
 
-            return true;
+            // ON RETOURNE LE JWT POUR LE NAVIGATEUR
+            return GenerateWebJwt(user);
         }
 
         // Méthode helper privée pour valider le ticket
@@ -131,6 +160,11 @@ namespace Amethral.Api.Services
                 Username = user.Username,
                 UserId = user.Id
             };
+        }
+
+        public async Task<bool> ForceLinkUserToToken(string webToken, Guid userId)
+        {
+            return await LinkUserToToken(webToken, userId);
         }
     }
 }

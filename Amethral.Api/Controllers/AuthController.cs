@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Amethral.Api.Services;
 using Amethral.Common.DTOs;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Amethral.Api.Controllers
 {
@@ -35,10 +36,10 @@ namespace Amethral.Api.Controllers
         [HttpPost("login-email")]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
-            var success = await _authService.LoginWithEmailAsync(request);
-            if (!success) return Unauthorized("Invalid credentials.");
+            var token = await _authService.LoginWithEmailAsync(request);
+            if (token == null) return Unauthorized("Invalid credentials.");
 
-            return Ok(new { message = "Login successful." });
+            return Ok(new { token });
         }
 
         [HttpPost("finalize")]
@@ -54,6 +55,28 @@ namespace Amethral.Api.Controllers
             }
 
             return Ok(result);
+        }
+
+        [HttpPost("link-existing-account")]
+        [Authorize] 
+        public async Task<IActionResult> LinkExistingAccount([FromBody] WebTokenRequest request)
+        {
+            // On récupère l'ID du User depuis son JWT Web (automatique grâce à [Authorize])
+            var userIdClaim = User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub);
+            if (userIdClaim == null) return Unauthorized();
+
+            var userId = Guid.Parse(userIdClaim.Value);
+
+            // On appelle une méthode simple (à créer dans AuthService) qui fait juste l'UPDATE
+            var success = await _authService.ForceLinkUserToToken(request.DeviceId, userId); // deviceId ici = le token string, nommage un peu confus, utilise le champ Token
+            
+            // Correction: utilise plutôt request.WebToken si tu as adapté le DTO, 
+            // ou réutilise WebTokenRequest en considérant que DeviceId contient le token, 
+            // ou mieux : crée un simple DTO { string Token }
+        
+            if (!success) return BadRequest("Token invalid or expired");
+
+            return Ok(new { message = "Linked successfully" });
         }
     }
 }
