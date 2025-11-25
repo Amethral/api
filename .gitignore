@@ -52,3 +52,9 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+
+# Sensitive configuration files
+appsettings.Local.json
+appsettings.Development.json
+**/appsettings.Local.json
+**/appsettings.Development.json

@@ -9,6 +9,9 @@ using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Load local settings file (gitignored) for OAuth secrets
+builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true);
+
 // Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -84,6 +87,20 @@ builder.Services.AddAuthentication(options =>
         ValidAudience = jwtSettings["Audience"],
         ClockSkew = TimeSpan.Zero // Pas de délai de grâce pour l'expiration
     };
+})
+.AddGoogle(googleOptions =>
+{
+    googleOptions.ClientId = builder.Configuration["OAuth:Google:ClientId"] ?? "";
+    googleOptions.ClientSecret = builder.Configuration["OAuth:Google:ClientSecret"] ?? "";
+    googleOptions.SaveTokens = true;
+})
+.AddDiscord(discordOptions =>
+{
+    discordOptions.ClientId = builder.Configuration["OAuth:Discord:ClientId"] ?? "";
+    discordOptions.ClientSecret = builder.Configuration["OAuth:Discord:ClientSecret"] ?? "";
+    discordOptions.Scope.Add("identify");
+    discordOptions.Scope.Add("email");
+    discordOptions.SaveTokens = true;
 });
 
 
