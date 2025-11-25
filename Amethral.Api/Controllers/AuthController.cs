@@ -11,10 +11,12 @@ namespace Amethral.Api.Controllers
     public class AuthController : ControllerBase
     {
         private readonly AuthService _authService;
+        private readonly IConfiguration _configuration;
 
-        public AuthController(AuthService authService)
+        public AuthController(AuthService authService, IConfiguration configuration)
         {
             _authService = authService;
+            _configuration = configuration;
         }
 
         [HttpPost("init")]
@@ -80,6 +82,21 @@ namespace Amethral.Api.Controllers
             return Ok(new { message = "Linked successfully" });
         }
 
+        [HttpGet("me")]
+        [Authorize]
+        public async Task<IActionResult> GetProfile()
+        {
+            var userIdClaim = User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub);
+            if (userIdClaim == null) return Unauthorized();
+
+            var userId = Guid.Parse(userIdClaim.Value);
+            var profile = await _authService.GetUserProfileAsync(userId);
+
+            if (profile == null) return NotFound("User not found.");
+
+            return Ok(profile);
+        }
+
         // OAuth Endpoints
 
         [HttpGet("oauth/{provider}/login")]
@@ -138,6 +155,7 @@ namespace Amethral.Api.Controllers
             var jwtToken = GenerateJwtForUser(user);
 
             // Check if there's a game session to link
+            // Check if there's a game session to link
             var stateParam = authenticateResult.Properties?.Items.TryGetValue("state", out var state) == true ? state : null;
             if (!string.IsNullOrEmpty(stateParam))
             {
@@ -152,10 +170,6 @@ namespace Amethral.Api.Controllers
 
                         // Link the user to the game session
                         await _authService.ForceLinkUserToToken(webToken, user.Id);
-
-                        // Redirect to frontend with success and JWT
-                        var frontendUrl = $"{HttpContext.Request.Scheme}://{HttpContext.Request.Host}/oauth/success?token={jwtToken}";
-                        return Redirect(frontendUrl);
                     }
                 }
                 catch
@@ -164,8 +178,17 @@ namespace Amethral.Api.Controllers
                 }
             }
 
-            // Return JWT token for web session
-            return Ok(new { token = jwtToken, message = "OAuth login successful" });
+            // Check User-Agent to distinguish between Unity and Web clients
+            var userAgent = Request.Headers["User-Agent"].ToString();
+            if (!string.IsNullOrEmpty(userAgent) && userAgent.Contains("Unity", StringComparison.OrdinalIgnoreCase))
+            {
+                 // Return JWT token for Unity session (JSON)
+                 return Ok(new { token = jwtToken, message = "OAuth login successful" });
+            }
+
+            // Redirect to frontend with success and JWT for Web clients
+            var frontendUrl = _configuration["FrontendUrl"] ?? "http://localhost:4200";
+            return Redirect($"{frontendUrl}/oauth/success?token={jwtToken}");
         }
 
 

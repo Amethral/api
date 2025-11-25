@@ -167,6 +167,20 @@ namespace Amethral.Api.Services
             return await LinkUserToToken(webToken, userId);
         }
 
+        public async Task<UserProfileResponse?> GetUserProfileAsync(Guid userId)
+        {
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null) return null;
+
+            return new UserProfileResponse
+            {
+                Id = user.Id,
+                Username = user.Username,
+                Email = user.Email,
+                CreatedAt = user.CreatedAt
+            };
+        }
+
         // OAuth Methods
 
         /// <summary>

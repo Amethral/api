@@ -10,7 +10,7 @@ using Microsoft.OpenApi.Models;
 var builder = WebApplication.CreateBuilder(args);
 
 // Load local settings file (gitignored) for OAuth secrets
-builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true);
+builder.Configuration.AddJsonFile("appsettings.local.json", optional: true, reloadOnChange: true);
 
 // Add services to the container.
 builder.Services.AddControllers();
@@ -71,6 +71,16 @@ builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
     options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultSignInScheme = Microsoft.AspNetCore.Authentication.Cookies.CookieAuthenticationDefaults.AuthenticationScheme;
+})
+.AddCookie(options =>
+{
+    // Cookie configuration for OAuth sign-in
+    options.Cookie.Name = "Amethral.Auth";
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.None; // TODO: Set to Always in production
+    options.ExpireTimeSpan = TimeSpan.FromMinutes(30);
+    options.SlidingExpiration = true;
 })
 .AddJwtBearer(options =>
 {
@@ -93,6 +103,7 @@ builder.Services.AddAuthentication(options =>
     googleOptions.ClientId = builder.Configuration["OAuth:Google:ClientId"] ?? "";
     googleOptions.ClientSecret = builder.Configuration["OAuth:Google:ClientSecret"] ?? "";
     googleOptions.SaveTokens = true;
+    googleOptions.SignInScheme = Microsoft.AspNetCore.Authentication.Cookies.CookieAuthenticationDefaults.AuthenticationScheme;
 })
 .AddDiscord(discordOptions =>
 {
@@ -101,6 +112,7 @@ builder.Services.AddAuthentication(options =>
     discordOptions.Scope.Add("identify");
     discordOptions.Scope.Add("email");
     discordOptions.SaveTokens = true;
+    discordOptions.SignInScheme = Microsoft.AspNetCore.Authentication.Cookies.CookieAuthenticationDefaults.AuthenticationScheme;
 });
 
 
