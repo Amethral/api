@@ -9,9 +9,6 @@ using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Load local settings file (gitignored) for OAuth secrets
-builder.Configuration.AddJsonFile("appsettings.local.json", optional: true, reloadOnChange: true);
-
 // Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();

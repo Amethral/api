@@ -13,6 +13,6 @@ namespace Amethral.Api.Data.Entities
 
         // Relations
         public ICollection<UserOAuth> OAuths { get; set; } = new List<UserOAuth>();
-        public ICollection<GameSession> Sessions { get; set; } = new List<GameSession>();
+
     }
 }
