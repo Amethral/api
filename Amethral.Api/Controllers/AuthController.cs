@@ -3,6 +3,7 @@ using Amethral.Api.Services;
 using Amethral.Common.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.Extensions.Logging;
 
 namespace Amethral.Api.Controllers
 {
@@ -12,11 +13,13 @@ namespace Amethral.Api.Controllers
     {
         private readonly AuthService _authService;
         private readonly IConfiguration _configuration;
+        private readonly ILogger<AuthController> _logger;
 
-        public AuthController(AuthService authService, IConfiguration configuration)
+        public AuthController(AuthService authService, IConfiguration configuration, ILogger<AuthController> logger)
         {
             _authService = authService;
             _configuration = configuration;
+            _logger = logger;
         }
 
         [HttpGet("me")]
@@ -61,7 +64,9 @@ namespace Amethral.Api.Controllers
 
             if (!authenticateResult.Succeeded)
             {
-                return BadRequest("OAuth authentication failed.");
+                var failureMessage = authenticateResult.Failure?.Message ?? "Unknown error";
+                _logger.LogError(authenticateResult.Failure, "OAuth authentication failed for provider {Provider}. Reason: {Reason}", provider, failureMessage);
+                return BadRequest($"OAuth authentication failed: {failureMessage}");
             }
 
             var claims = authenticateResult.Principal?.Claims;
@@ -71,21 +76,30 @@ namespace Amethral.Api.Controllers
 
             if (string.IsNullOrEmpty(providerKey) || string.IsNullOrEmpty(email))
             {
+                _logger.LogError("OAuth callback failed: Missing ProviderKey or Email for provider {Provider}.", provider);
                 return BadRequest("Failed to retrieve user information from OAuth provider.");
             }
 
             // Generate username from email if name not provided
             var username = name ?? email.Split('@')[0];
 
-            // Find or create user
-            var user = await _authService.FindOrCreateOAuthUserAsync(provider, providerKey, email, username);
+            try
+            {
+                // Find or create user
+                var user = await _authService.FindOrCreateOAuthUserAsync(provider, providerKey, email, username);
 
-            // Generate JWT for the web session
-            var jwtToken = _authService.GenerateWebJwt(user);
+                // Generate JWT for the web session
+                var jwtToken = _authService.GenerateWebJwt(user);
 
-            // Redirect to frontend with success and JWT for Web clients
-            var frontendUrl = _configuration["FrontendUrl"] ?? "http://localhost:4200";
-            return Redirect($"{frontendUrl}/oauth/success?token={jwtToken}");
+                // Redirect to frontend with success and JWT for Web clients
+                var frontendUrl = _configuration["FrontendUrl"] ?? "http://localhost:4200";
+                return Redirect($"{frontendUrl}/oauth/success?token={jwtToken}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing OAuth callback (FindOrCreateOAuthUserAsync) for provider {Provider}, email {Email}", provider, email);
+                return BadRequest($"An error occurred while logging in with {provider}.");
+            }
         }
 
 
