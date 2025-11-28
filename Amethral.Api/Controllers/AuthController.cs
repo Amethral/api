@@ -22,6 +22,43 @@ namespace Amethral.Api.Controllers
             _logger = logger;
         }
 
+        // Standard Auth Endpoints
+
+        [HttpPost("register")]
+        public async Task<IActionResult> Register([FromBody] RegisterRequest request)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var (success, message) = await _authService.RegisterAsync(request.Username, request.Email, request.Password);
+
+            if (!success)
+            {
+                // Using 409 Conflict if user exists
+                return Conflict(new { message });
+            }
+
+            return Ok(new { message });
+        }
+
+        [HttpPost("login")]
+        public async Task<IActionResult> Login([FromBody] LoginRequest request)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var user = await _authService.ValidateUserAsync(request.Email, request.Password);
+
+            if (user == null)
+            {
+                return Unauthorized(new { message = "Invalid email or password." });
+            }
+
+            var token = _authService.GenerateWebJwt(user);
+
+            return Ok(new { token });
+        }
+
         [HttpGet("me")]
         [Authorize]
         public async Task<IActionResult> GetProfile()
@@ -57,19 +94,14 @@ namespace Amethral.Api.Controllers
         [HttpGet("oauth/{provider}/callback")]
         public async Task<IActionResult> OAuthCallback(string provider)
         {
-            // Capitalize provider name to match registered authentication schemes
-            var providerScheme = char.ToUpper(provider[0]) + provider.Substring(1).ToLower();
-
-            var authenticateResult = await HttpContext.AuthenticateAsync(providerScheme);
-
-            if (!authenticateResult.Succeeded)
+            // The OAuth middleware has already authenticated the user and set the claims
+            if (!User.Identity.IsAuthenticated)
             {
-                var failureMessage = authenticateResult.Failure?.Message ?? "Unknown error";
-                _logger.LogError(authenticateResult.Failure, "OAuth authentication failed for provider {Provider}. Reason: {Reason}", provider, failureMessage);
-                return BadRequest($"OAuth authentication failed: {failureMessage}");
+                _logger.LogError("OAuth callback failed: User is not authenticated for provider {Provider}.", provider);
+                return BadRequest("OAuth authentication failed: User not authenticated.");
             }
 
-            var claims = authenticateResult.Principal?.Claims;
+            var claims = User.Claims;
             var providerKey = claims?.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
             var email = claims?.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Email)?.Value;
             var name = claims?.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Name)?.Value;
@@ -101,7 +133,6 @@ namespace Amethral.Api.Controllers
                 return BadRequest($"An error occurred while logging in with {provider}.");
             }
         }
-
 
         [HttpPost("oauth/link")]
         [Authorize]

@@ -106,6 +106,7 @@ builder.Services.AddAuthentication(options =>
 {
     discordOptions.ClientId = builder.Configuration["OAuth:Discord:ClientId"] ?? "";
     discordOptions.ClientSecret = builder.Configuration["OAuth:Discord:ClientSecret"] ?? "";
+    discordOptions.CallbackPath = "/api/auth/oauth/discord/callback";
     discordOptions.Scope.Add("identify");
     discordOptions.Scope.Add("email");
     discordOptions.SaveTokens = true;

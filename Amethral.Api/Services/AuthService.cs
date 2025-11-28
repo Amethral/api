@@ -6,6 +6,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using BCrypt.Net; // Requires BCrypt.Net-Next package
 
 namespace Amethral.Api.Services
 {
@@ -36,7 +37,7 @@ namespace Amethral.Api.Services
                 issuer: _config["JwtSettings:Issuer"],
                 audience: _config["JwtSettings:Audience"],
                 claims: claims,
-                expires: DateTime.UtcNow.AddDays(7), // Reste connecté 7 jours
+                expires: DateTime.UtcNow.AddDays(7),
                 signingCredentials: creds
             );
 
@@ -55,6 +56,48 @@ namespace Amethral.Api.Services
                 Email = user.Email,
                 CreatedAt = user.CreatedAt
             };
+        }
+
+        // Standard Auth Methods
+
+        public async Task<(bool Success, string Message)> RegisterAsync(string username, string email, string password)
+        {
+            // 1. Check for existing users
+            if (await _context.Users.AnyAsync(u => u.Email == email))
+                return (false, "Email is already in use.");
+
+            if (await _context.Users.AnyAsync(u => u.Username == username))
+                return (false, "Username is already taken.");
+
+            // 2. Hash Password
+            var passwordHash = BCrypt.Net.BCrypt.HashPassword(password);
+
+            // 3. Create User
+            var newUser = new User
+            {
+                Username = username,
+                Email = email,
+                PasswordHash = passwordHash,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.Users.Add(newUser);
+            await _context.SaveChangesAsync();
+
+            return (true, "User registered successfully.");
+        }
+
+        public async Task<User?> ValidateUserAsync(string email, string password)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+            
+            // If user not found, or user has no password (OAuth only account), return null
+            if (user == null || string.IsNullOrEmpty(user.PasswordHash)) return null;
+
+            // Verify password
+            bool isValid = BCrypt.Net.BCrypt.Verify(password, user.PasswordHash);
+
+            return isValid ? user : null;
         }
 
         // OAuth Methods
