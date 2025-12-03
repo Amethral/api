@@ -13,7 +13,7 @@ services:
 
       # ASP.NET Core Configuration
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
-      ASPNETCORE_URLS: http://+:8080
+      ASPNETCORE_URLS: http://+:80
 
       # Frontend URL for CORS
       FrontendUrl: ${FRONTEND_URL:-http://localhost:4200}
@@ -29,7 +29,15 @@ services:
       OAuth__Discord__ClientId: ${DISCORD_CLIENT_ID}
       OAuth__Discord__ClientSecret: ${DISCORD_CLIENT_SECRET}
 
+    networks:
+      - coolify
+    expose:
+      - "80"
     ports:
-      - "${API_PORT:-8080}:8080"
+      - "${API_PORT:-3001}:80"
 
     restart: unless-stopped
+
+networks:
+  coolify:
+    external: true

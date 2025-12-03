@@ -40,6 +40,6 @@ COPY --from=build /src/Amethral.Api /app/src
 COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
-EXPOSE 8080
+EXPOSE 80
 
 ENTRYPOINT ["/app/entrypoint.sh"]
