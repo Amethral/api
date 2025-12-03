@@ -2,13 +2,13 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
-# Copy csproj files and restore dependencies
-COPY ["Amethral.Api/Amethral.Api.csproj", "Amethral.Api/"]
-COPY ["common/Amethral.Common/Amethral.Common.csproj", "common/Amethral.Common/"]
+# Copy everything first (including submodules)
+COPY . .
+
+# Restore dependencies
 RUN dotnet restore "Amethral.Api/Amethral.Api.csproj"
 
-# Copy everything else and build
-COPY . .
+# Build
 WORKDIR "/src/Amethral.Api"
 RUN dotnet build "Amethral.Api.csproj" -c Release -o /app/build
 
