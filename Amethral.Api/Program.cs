@@ -45,8 +45,30 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 // DB Context
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
+// Support for postgres:// URL format (common in cloud providers like Coolify, Railway, Heroku)
+if (!string.IsNullOrEmpty(connectionString) && 
+    (connectionString.StartsWith("postgres://") || connectionString.StartsWith("postgresql://")))
+{
+    try 
+    {
+        var uri = new Uri(connectionString);
+        var userInfo = uri.UserInfo.Split(':');
+        var username = Uri.UnescapeDataString(userInfo[0]);
+        var password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : "";
+        
+        connectionString = $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={username};Password={password}";
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error parsing DATABASE_URL: {ex.Message}");
+        // Fallback to original string if parsing fails
+    }
+}
+
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(connectionString));
 
 // Service Métier
 builder.Services.AddScoped<AuthService>();

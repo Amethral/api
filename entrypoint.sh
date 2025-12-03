@@ -5,7 +5,7 @@ echo "Starting entrypoint script..."
 
 # Wait for database to be ready
 echo "Waiting for database to be ready..."
-until dotnet ef database update --project /app/src --no-build 2>&1 | grep -q "Done\|already"; do
+until dotnet ef database update --project /app/src --no-build; do
   echo "Database is unavailable - sleeping"
   sleep 2
 done
