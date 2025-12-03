@@ -34,7 +34,7 @@ services:
     expose:
       - "80"
     ports:
-      - "${API_PORT:-3001}:80"
+      - "${API_PORT:-3003}:80"
 
     restart: unless-stopped
 
