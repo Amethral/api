@@ -20,21 +20,15 @@ RUN dotnet publish "Amethral.Api.csproj" -c Release -o /app/publish /p:UseAppHos
 RUN dotnet tool install --global dotnet-ef --version 10.0.0
 ENV PATH="${PATH}:/root/.dotnet/tools"
 
+# Create EF Migrations Bundle
+RUN dotnet ef migrations bundle --project Amethral.Api.csproj -o /app/publish/efbundle
+
 # Runtime stage
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
 
-# Install dotnet-ef tool in runtime image for migrations
-COPY --from=mcr.microsoft.com/dotnet/sdk:10.0 /usr/share/dotnet /usr/share/dotnet
-RUN rm -f /usr/bin/dotnet && ln -s /usr/share/dotnet/dotnet /usr/bin/dotnet
-RUN dotnet tool install --global dotnet-ef --version 10.0.0
-ENV PATH="${PATH}:/root/.dotnet/tools"
-
-# Copy published app
+# Copy published app (includes efbundle)
 COPY --from=publish /app/publish .
-
-# Copy source files needed for migrations
-COPY --from=build /src/Amethral.Api /app/src
 
 # Copy entrypoint script
 COPY entrypoint.sh /app/entrypoint.sh
