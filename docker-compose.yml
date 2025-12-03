@@ -1,15 +1,35 @@
 version: "3.8"
-services:
-  postgres:
-    image: postgres:15
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: mmorpg_auth
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
 
-volumes:
-  postgres_data:
+services:
+  # .NET API
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: amethral-api
+    environment:
+      # Database Connection (use your external database)
+      ConnectionStrings__DefaultConnection: "${DATABASE_URL}"
+
+      # ASP.NET Core Configuration
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      ASPNETCORE_URLS: http://+:8080
+
+      # Frontend URL for CORS
+      FrontendUrl: ${FRONTEND_URL:-http://localhost:4200}
+
+      # JWT Settings
+      JwtSettings__SecretKey: ${JWT_SECRET_KEY}
+      JwtSettings__Issuer: ${JWT_ISSUER:-Amethral}
+      JwtSettings__Audience: ${JWT_AUDIENCE:-AmethralAPI}
+
+      # OAuth Settings
+      OAuth__Google__ClientId: ${GOOGLE_CLIENT_ID}
+      OAuth__Google__ClientSecret: ${GOOGLE_CLIENT_SECRET}
+      OAuth__Discord__ClientId: ${DISCORD_CLIENT_ID}
+      OAuth__Discord__ClientSecret: ${DISCORD_CLIENT_SECRET}
+
+    ports:
+      - "${API_PORT:-8080}:8080"
+
+    restart: unless-stopped
