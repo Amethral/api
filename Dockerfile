@@ -27,6 +27,9 @@ RUN dotnet ef migrations bundle --project Amethral.Api.csproj -o /app/publish/ef
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
 
+# Install system dependencies
+RUN apt-get update && apt-get install -y libgssapi-krb5-2 && rm -rf /var/lib/apt/lists/*
+
 # Copy published app (includes efbundle)
 COPY --from=publish /app/publish .
 

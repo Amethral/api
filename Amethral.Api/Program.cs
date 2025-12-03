@@ -86,54 +86,68 @@ var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secretKey = jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey is not configured.");
 var key = Encoding.UTF8.GetBytes(secretKey);
 
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultSignInScheme = Microsoft.AspNetCore.Authentication.Cookies.CookieAuthenticationDefaults.AuthenticationScheme;
-})
-.AddCookie(options =>
-{
-    // Cookie configuration for OAuth sign-in
-    options.Cookie.Name = "Amethral.Auth";
-    options.Cookie.HttpOnly = true;
-    options.Cookie.SecurePolicy = CookieSecurePolicy.None; // TODO: Set to Always in production
-    options.ExpireTimeSpan = TimeSpan.FromMinutes(30);
-    options.SlidingExpiration = true;
-})
-.AddJwtBearer(options =>
-{
-    options.MapInboundClaims = false; // Disable automatic claim mapping
-    options.RequireHttpsMetadata = false; //TODO: Mettre true en prod
-    options.SaveToken = true;
-    options.TokenValidationParameters = new TokenValidationParameters
+    var authBuilder = builder.Services.AddAuthentication(options =>
     {
-        ValidateIssuerSigningKey = true,
-        IssuerSigningKey = new SymmetricSecurityKey(key),
-        ValidateIssuer = true,
-        ValidIssuer = jwtSettings["Issuer"],
-        ValidateAudience = true,
-        ValidAudience = jwtSettings["Audience"],
-        ClockSkew = TimeSpan.Zero // Pas de délai de grâce pour l'expiration
-    };
-})
-.AddGoogle(googleOptions =>
-{
-    googleOptions.ClientId = builder.Configuration["OAuth:Google:ClientId"] ?? "";
-    googleOptions.ClientSecret = builder.Configuration["OAuth:Google:ClientSecret"] ?? "";
-    googleOptions.SaveTokens = true;
-    googleOptions.SignInScheme = Microsoft.AspNetCore.Authentication.Cookies.CookieAuthenticationDefaults.AuthenticationScheme;
-})
-.AddDiscord(discordOptions =>
-{
-    discordOptions.ClientId = builder.Configuration["OAuth:Discord:ClientId"] ?? "";
-    discordOptions.ClientSecret = builder.Configuration["OAuth:Discord:ClientSecret"] ?? "";
-    discordOptions.CallbackPath = "/api/auth/oauth/discord/callback";
-    discordOptions.Scope.Add("identify");
-    discordOptions.Scope.Add("email");
-    discordOptions.SaveTokens = true;
-    discordOptions.SignInScheme = Microsoft.AspNetCore.Authentication.Cookies.CookieAuthenticationDefaults.AuthenticationScheme;
-});
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultSignInScheme = Microsoft.AspNetCore.Authentication.Cookies.CookieAuthenticationDefaults.AuthenticationScheme;
+    })
+    .AddCookie(options =>
+    {
+        // Cookie configuration for OAuth sign-in
+        options.Cookie.Name = "Amethral.Auth";
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.None; // TODO: Set to Always in production
+        options.ExpireTimeSpan = TimeSpan.FromMinutes(30);
+        options.SlidingExpiration = true;
+    })
+    .AddJwtBearer(options =>
+    {
+        options.MapInboundClaims = false; // Disable automatic claim mapping
+        options.RequireHttpsMetadata = false; //TODO: Mettre true en prod
+        options.SaveToken = true;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(key),
+            ValidateIssuer = true,
+            ValidIssuer = jwtSettings["Issuer"],
+            ValidateAudience = true,
+            ValidAudience = jwtSettings["Audience"],
+            ClockSkew = TimeSpan.Zero // Pas de délai de grâce pour l'expiration
+        };
+    });
+
+    // Optional Google Auth
+    var googleClientId = builder.Configuration["OAuth:Google:ClientId"];
+    var googleClientSecret = builder.Configuration["OAuth:Google:ClientSecret"];
+    if (!string.IsNullOrEmpty(googleClientId) && !string.IsNullOrEmpty(googleClientSecret))
+    {
+        authBuilder.AddGoogle(googleOptions =>
+        {
+            googleOptions.ClientId = googleClientId;
+            googleOptions.ClientSecret = googleClientSecret;
+            googleOptions.SaveTokens = true;
+            googleOptions.SignInScheme = Microsoft.AspNetCore.Authentication.Cookies.CookieAuthenticationDefaults.AuthenticationScheme;
+        });
+    }
+
+    // Optional Discord Auth
+    var discordClientId = builder.Configuration["OAuth:Discord:ClientId"];
+    var discordClientSecret = builder.Configuration["OAuth:Discord:ClientSecret"];
+    if (!string.IsNullOrEmpty(discordClientId) && !string.IsNullOrEmpty(discordClientSecret))
+    {
+        authBuilder.AddDiscord(discordOptions =>
+        {
+            discordOptions.ClientId = discordClientId;
+            discordOptions.ClientSecret = discordClientSecret;
+            discordOptions.CallbackPath = "/api/auth/oauth/discord/callback";
+            discordOptions.Scope.Add("identify");
+            discordOptions.Scope.Add("email");
+            discordOptions.SaveTokens = true;
+            discordOptions.SignInScheme = Microsoft.AspNetCore.Authentication.Cookies.CookieAuthenticationDefaults.AuthenticationScheme;
+        });
+    }
 
 
 var app = builder.Build();
