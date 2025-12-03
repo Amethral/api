@@ -26,7 +26,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\common\Amethral.Common\Amethral.Common.csproj" />
+    <ProjectReference Include="..\common\Amethral.common\Amethral.common.csproj" />
   </ItemGroup>
 
 </Project>
