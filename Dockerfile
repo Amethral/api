@@ -25,7 +25,7 @@ WORKDIR /app
 
 # Install dotnet-ef tool in runtime image for migrations
 COPY --from=mcr.microsoft.com/dotnet/sdk:10.0 /usr/share/dotnet /usr/share/dotnet
-RUN ln -s /usr/share/dotnet/dotnet /usr/bin/dotnet
+RUN rm -f /usr/bin/dotnet && ln -s /usr/share/dotnet/dotnet /usr/bin/dotnet
 RUN dotnet tool install --global dotnet-ef --version 10.0.0
 ENV PATH="${PATH}:/root/.dotnet/tools"
 
